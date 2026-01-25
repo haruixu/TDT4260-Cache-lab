@@ -24,6 +24,10 @@ SimpleCache::SimpleCache(int size, int blockSize, int associativity,
 
         // TODO: Associative: Allocate as many entries as there are ways
         // i.e. replace vector of single entry with vector of way number of entries 
+
+        // for (int way = 0; way < this->associativity; way++) {
+            //vec.push_back(new Entry());
+        // }
         vec.push_back(new Entry());
 
         entries.push_back(vec);
@@ -82,6 +86,8 @@ SimpleCache::recvResp(Addr resp)
     DPRINTF(TDTSimpleCache, "Miss: Replaced way: %d\n", way);
     // TODO: Direct-Mapped: Record new cache line in entries
 
+    entries.at(index).at(way)->tag = tag;
+
     // TODO: Associative: Record LRU info for new line in entries
     sendResp(resp);
 }
@@ -91,14 +97,15 @@ SimpleCache::calculateTag(Addr req)
 {
     // TODO: Direct-Mapped: Calculate tag
     // hint: req >> ((int)std::log2(...
-    return req;
+    return req >> (int)std::log2(blockSize*numSets);
 }
 
 int
 SimpleCache::calculateIndex(Addr req)
 {
+
     // TODO: Direct-Mapped: Calculate index
-    return 0;
+    return (req >> (int)std::log2(blockSize)) & (numSets - 1);
 }
 
 bool
@@ -106,13 +113,22 @@ SimpleCache::hasLine(int index, int tag)
 {
     // TODO: Direct-Mapped: Check if line is already in cache
     // TODO: Associative: Check all possible ways
-    return false;
+    return entries.at(index).at(0)->tag == tag && entries.at(index).at(0)->tag != MaxAddr;
 }
 
 int
 SimpleCache::lineWay(int index, int tag)
 {
     // TODO: Associative: Find in which way a cache line is stored
+    /*
+    int way = 0;
+    for  (Entry *entry : entries.at(index))  {
+        if (entry->tag == tag) {
+            return way;
+        }
+        way++;
+    }
+    return -1;*/
     return 0;
 }
 
