@@ -31,6 +31,7 @@ static double mat_a[SIZE][SIZE];
 static double mat_b[SIZE][SIZE];
 static double mat_c[SIZE][SIZE];
 static double mat_ref[SIZE][SIZE];
+static double transpose[SIZE][SIZE];
 
 /**
  * Matrix multiplication. This is the procedure you should try to
@@ -43,15 +44,34 @@ matmul_opt()
          * here. It should calculate mat_c := mat_a * mat_b. See
          * matmul_ref() for a reference solution.
          */
-        int i, j, k;
+        int i, j, k;    
+        int BS = 32;
 
-                for (k = 0; k < SIZE; k++) {
-        for (j = 0; j < SIZE; j++) {
-            for (i = 0; i < SIZE; i++) {
-                    mat_c[i][j] += mat_a[i][k] * mat_b[k][j];
+        // for (k = 0; k < SIZE; k++) {
+        //         for (j = 0; j < SIZE; j++) {
+        //                 for (i = 0; i < SIZE; i++) {
+        //                         mat_c[i][j] += mat_a[i][k] * mat_b[k][j];
+        //                 }
+        //         }
+        // }
+
+        // TODO: loop interchange - switch around indices of two inner loops
+        for (k = 0; k < SIZE; k++) {
+                for (i = 0; i < SIZE; i++) {
+                        for (j = 0; j < SIZE; j++) {
+                                mat_c[i][j] += mat_a[i][k] * mat_b[k][j];
+                        }
                 }
-            }
         }
+
+        // TODO: loop tiling
+        // for (int kk = 0; kk < SIZE; kk += BS)
+        //         for (int jj = 0; jj < SIZE; jj += BS)
+        //                 for (int ii = 0; ii < SIZE; ii += BS)
+        //                         for (int k = kk; k < kk + BS && k < SIZE; k++)
+        //                                 for (int j = jj; j < jj + BS && j < SIZE; j++)
+        //                                         for (int i = ii; i < ii + BS && i < SIZE; i++)
+        //                                                 mat_c[i][j] += mat_a[i][k] * mat_b[k][j];
 }
 
 /**
