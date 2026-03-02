@@ -1,5 +1,6 @@
 #include "mem/cache/prefetch/tdt_prefetcher.hh"
 
+#include "base/types.hh"
 #include "debug/HWPrefetch.hh"
 #include "mem/cache/replacement_policies/base.hh"
 #include "params/TDTPrefetcher.hh"
@@ -24,9 +25,12 @@ TDTPrefetcher::TDTPrefetcher(const TDTPrefetcherParams &params)
       pcTableInfo(params.table_assoc, params.table_entries,
                   params.table_indexing_policy, params.table_replacement_policy)
 {
+    scoreTable.fill(0);
     offsetIndex = 0;
     bestOffset = 0;
     disablePrefetching = true;
+
+    RRTable.fill(Addr(0));
 }
 
 TDTPrefetcher::PCTable &TDTPrefetcher::findTable(int context)
@@ -57,12 +61,72 @@ void TDTPrefetcher::notifyFill(const CacheAccessProbeArg &arg)
     // A cache line has been filled in
 }
 
+bool TDTPrefetcher::testAddressWithOffset(Addr address, int offset)
+{
+    Addr testAddress = address - offset;
+    int tableIndex = calculateHash(testAddress);
+
+    return RRTable[tableIndex] == testAddress;
+};
+
+int TDTPrefetcher::calculateHash(Addr address)
+{
+    // XOR the 8 LSBs with the next 8 bits
+    int lsb = address & 0xFF;
+    int next = (address >> 8) & 0xFF;
+    return lsb ^ next;
+};
+
 void TDTPrefetcher::trainPrefetcher(Addr accessAddress)
 {
+    int testOffset = offsetArray[offsetIndex];
+
+    int newScore = 0;
+    if (testAddressWithOffset(accessAddress, testOffset)) {
+        // Hit in the RRTable, increase the offset's score
+        newScore = ++scoreTable[offsetIndex];
+    }
+
+    // Update the current best offset candidate
+    if (newScore > bestCandidateScore) {
+        bestCandidate = testOffset;
+        bestCandidateScore = newScore;
+    }
+
+    // Continue to the next offset
     offsetIndex++;
     if (offsetIndex >= OFFSET_ARRAY_SIZE) {
+        // The round is finished, reset the offset index
         offsetIndex = 0;
+        roundCount++;
     }
+};
+
+void TDTPrefetcher::updateBestOffset()
+{
+    if (roundCount < ROUNDMAX && bestCandidateScore < SCOREMAX) {
+        // The training is not finished yet
+        return;
+    }
+
+    if (bestCandidateScore <= BADSCORE) {
+        // Training finished with bad results, disable prefetching
+        disablePrefetching = true;
+    } else {
+        // New best offset is determined
+        disablePrefetching = false;
+        bestOffset = bestCandidate;
+    }
+
+    // Setup the next round of training
+    resetTraining();
+};
+
+void TDTPrefetcher::resetTraining()
+{
+    scoreTable.fill(0);
+    bestCandidateScore = 0;
+    roundCount = 0;
 };
 
 void TDTPrefetcher::issuePrefetch(Addr accessAddress,
@@ -85,9 +149,10 @@ void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi,
 
     if (pfi.isWrite() && hasAddressBeenPrefetched(access_addr)) {
         // Update the RR table
-    } else {
+    } else if (!pfi.isWrite()) {
         // Train and then issue a prefetch from the address
         trainPrefetcher(access_addr);
+        updateBestOffset();
 
         issuePrefetch(access_addr, addresses);
     }

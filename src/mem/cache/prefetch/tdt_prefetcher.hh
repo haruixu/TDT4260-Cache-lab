@@ -1,6 +1,7 @@
 #ifndef __MEM_CACHE_PREFETCH_TDT_PREFETCHER_HH__
 #define __MEM_CACHE_PREFETCH_TDT_PREFETCHER_HH__
 
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -92,7 +93,7 @@ class TDTPrefetcher : public Queued
 
     // Offset array
 #define OFFSET_ARRAY_SIZE 52
-    int offsetArray[OFFSET_ARRAY_SIZE] = {
+    constexpr static std::array<int, OFFSET_ARRAY_SIZE> offsetArray{
         1,   2,   3,   4,   5,   6,   8,   9,   10,  12,  15,  16,  18,
         20,  24,  25,  27,  30,  32,  36,  40,  45,  48,  50,  54,  60,
         64,  72,  75,  80,  81,  90,  96,  100, 108, 120, 125, 128, 135,
@@ -100,23 +101,35 @@ class TDTPrefetcher : public Queued
     int offsetIndex;
 
     // Scoring system
-    int scoreTable[OFFSET_ARRAY_SIZE] = {0};
+#define ROUNDMAX 100
+#define SCOREMAX 31
+#define BADSCORE 1
+    static std::array<int, OFFSET_ARRAY_SIZE> scoreTable;
     int roundCount; // Define max rounds, max score etc
-    int bestOffset;
+    int bestCandidate;
+    int bestCandidateScore;
+
+    // Prefetching parameters
     bool disablePrefetching;
+    int bestOffset;
 
     // Recent Requests table
 #define RR_TABLE_SIZE 256
-    Addr RRTable[RR_TABLE_SIZE] = {0};
+    static std::array<Addr, RR_TABLE_SIZE> RRTable;
 
     bool testAddressWithOffset(Addr address, int offset);
     int calculateHash(Addr address);
 
-    bool hasAddressBeenPrefetched(Addr address);
+    bool hasAddressBeenPrefetched(Addr address); // TODO: implement
 
     void trainPrefetcher(Addr accessAddress);
-    void issuePrefetch(Addr accessAddress,
-                       std::vector<AddrPriority> &addresses);
+    void updateBestOffset();
+    void resetTraining();
+
+    void issuePrefetch(
+        Addr accessAddress,
+        std::vector<AddrPriority> &addresses); // TODO: check if the prefetched
+                                               // address is in the same page
 
   public:
     TDTPrefetcher(const TDTPrefetcherParams &p);
