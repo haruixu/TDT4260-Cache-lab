@@ -128,8 +128,7 @@ class TDTPrefetcher : public Queued
 
     void issuePrefetch(
         Addr accessAddress,
-        std::vector<AddrPriority> &addresses); // TODO: check if the prefetched
-                                               // address is in the same page
+        std::vector<AddrPriority> &addresses);
 
   public:
     TDTPrefetcher(const TDTPrefetcherParams &p);

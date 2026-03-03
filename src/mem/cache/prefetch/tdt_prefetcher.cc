@@ -21,9 +21,8 @@ TDTPrefetcher::TDTEntry::TDTEntry(TagExtractor ext) : TaggedEntry()
 void TDTPrefetcher::TDTEntry::invalidate() { TaggedEntry::invalidate(); }
 
 TDTPrefetcher::TDTPrefetcher(const TDTPrefetcherParams &params)
-    : Queued(params),
-      pcTableInfo(params.table_assoc, params.table_entries,
-                  params.table_indexing_policy, params.table_replacement_policy)
+    : Queued(params), pcTableInfo(params.table_assoc, params.table_entries,
+                                  params.table_indexing_policy, params.table_replacement_policy)
 {
     scoreTable.fill(0);
     offsetIndex = 0;
@@ -46,10 +45,10 @@ TDTPrefetcher::PCTable &TDTPrefetcher::allocateNewContext(int context)
 {
     assert(context == 0);
     std::string table_name = name() + ".PCTable" + std::to_string(context);
-    pcTables[context].reset(new PCTable(
-        table_name.c_str(), pcTableInfo.numEntries, pcTableInfo.assoc,
-        pcTableInfo.replacementPolicy, pcTableInfo.indexingPolicy,
-        TDTEntry(genTagExtractor(pcTableInfo.indexingPolicy))));
+    pcTables[context].reset(new PCTable(table_name.c_str(), pcTableInfo.numEntries,
+                                        pcTableInfo.assoc, pcTableInfo.replacementPolicy,
+                                        pcTableInfo.indexingPolicy,
+                                        TDTEntry(genTagExtractor(pcTableInfo.indexingPolicy))));
 
     DPRINTF(HWPrefetch, "Adding context %i with tdt4260 entries\n", context);
 
@@ -129,14 +128,15 @@ void TDTPrefetcher::resetTraining()
     roundCount = 0;
 };
 
-void TDTPrefetcher::issuePrefetch(Addr accessAddress,
-                                  std::vector<AddrPriority> &addresses)
+void TDTPrefetcher::issuePrefetch(Addr accessAddress, std::vector<AddrPriority> &addresses)
 {
-    addresses.push_back(AddrPriority(accessAddress + bestOffset, 0));
+    Addr prefetchAddress = accessAddress + bestOffset; // NOTE: multiply by block size?
+    if (samePage(accessAddress, prefetchAddress)) {
+        addresses.push_back(AddrPriority(prefetchAddress, 0));
+    }
 };
 
-void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi,
-                                      std::vector<AddrPriority> &addresses,
+void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi, std::vector<AddrPriority> &addresses,
                                       const CacheAccessor &cache)
 {
     if (!pfi.hasPC()) {
@@ -203,10 +203,7 @@ uint32_t TDTPrefetcherHashedSetAssociative::extractSet(const KeyType &key) const
     return (hash1 ^ hash2) & setMask;
 }
 
-Addr TDTPrefetcherHashedSetAssociative::extractTag(const Addr addr) const
-{
-    return addr;
-}
+Addr TDTPrefetcherHashedSetAssociative::extractTag(const Addr addr) const { return addr; }
 
 } // namespace prefetch
 } // namespace gem5
