@@ -114,7 +114,8 @@ class TDTPrefetcher : public Queued
     int bestOffset;
 
     // Recent Requests table
-#define RR_TABLE_SIZE 256
+#define RR_TABLE_INDEX_BITS (8)
+#define RR_TABLE_SIZE (2 << RR_TABLE_INDEX_BITS)
     std::array<Addr, RR_TABLE_SIZE> RRTable;
 
     bool testAddressWithOffset(Addr address, int offset);

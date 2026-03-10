@@ -9,8 +9,8 @@ gem5_root = os.path.abspath("../../..")
 gem5_bin = f"{gem5_root}/build/X86/gem5.opt"
 config = f"{gem5_root}/configs/tdt4260/prefetcher.py"
 
-# binaries = ["gcc", "exchange2", "mcf", "deepsjeng", "x264"]
-binaries = ["gcc"]
+binaries = ["gcc", "exchange2", "mcf", "deepsjeng", "x264"]
+# binaries = ["gcc"]
 welcome_message = False
 
 if welcome_message:

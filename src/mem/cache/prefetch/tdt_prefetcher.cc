@@ -95,8 +95,9 @@ bool TDTPrefetcher::testAddressWithOffset(Addr address, int offset)
 unsigned int TDTPrefetcher::calculateHash(Addr address)
 {
     // XOR the 8 LSBs with the next 8 bits
-    unsigned int lsb = address & 0xFF;
-    unsigned int next = (address >> 8) & 0xFF;
+    unsigned int mask = RR_TABLE_SIZE - 1;
+    unsigned int lsb = address & mask;
+    unsigned int next = (address >> RR_TABLE_INDEX_BITS) & mask;
     return lsb ^ next;
 };
 
