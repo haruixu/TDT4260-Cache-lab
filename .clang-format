@@ -1,0 +1,7 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+BreakAfterReturnType: ExceptShortType
+DerivePointerAlignment: false
+PointerAlignment: Right
+BreakBeforeBraces: Linux
+ColumnLimit: 80
