@@ -66,18 +66,18 @@ void TDTPrefetcher::notifyFill(const CacheAccessProbeArg &arg)
 {
     // A cache line has been filled in
     PacketPtr pkt = arg.pkt;
-    Addr fill_addr = pkt->getAddr();
+    Addr fillAddress = pkt->getAddr();
 
     if (disablePrefetching) {
         // Update the RR table with address
-        insertIntoRR(fill_addr);
+        insertIntoRR(fillAddress);
 
     } else if (hasPacketBeenPrefetched(pkt)) {
         // Update the RR table with address-best_offset
-        Addr baseAddress = fill_addr - bestOffset * blkSize;
+        Addr baseAddress = fillAddress - bestOffset * blkSize;
         baseAddress = blockAddress(baseAddress);
 
-        if (samePage(baseAddress, fill_addr)) {
+        if (samePage(baseAddress, fillAddress)) {
             insertIntoRR(baseAddress);
         }
     }
@@ -157,14 +157,13 @@ void TDTPrefetcher::resetTraining()
 void TDTPrefetcher::issuePrefetch(Addr accessAddress,
                                   std::vector<AddrPriority> &addresses)
 {
-    // if (disablePrefetching) {
-    //     return;
-    // }
+    if (disablePrefetching) {
+        return;
+    }
 
-    Addr prefetchAddress =
-        accessAddress + bestOffset * blkSize; // NOTE: multiply by block size?
+    Addr prefetchAddress = accessAddress + bestOffset * blkSize;
     if (samePage(accessAddress, prefetchAddress)) {
-        addresses.push_back(AddrPriority(accessAddress + blkSize, 0));
+        // Only issue prefetches that lie in the same page
         addresses.push_back(AddrPriority(prefetchAddress, 0));
     }
 };
@@ -184,17 +183,20 @@ void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi,
         return;
     }
 
-    // access_addr is the memory address (of the cache line) requested
-    Addr access_addr = pfi.getAddr();
-    access_addr = blockAddress(access_addr);
-
-    if (!pfi.isWrite()) { // if it is a cache access
-        // Train and then issue a prefetch from the address
-        trainPrefetcher(access_addr);
-        updateBestOffset();
-
-        issuePrefetch(access_addr, addresses);
+    if (pfi.isWrite()) {
+        // Ignore address that are filled in the cache (handled by notifyFill)
+        return;
     }
+
+    // accessAddress is the memory address (of the cache line) requested
+    Addr accessAddress = pfi.getAddr();
+    accessAddress = blockAddress(accessAddress);
+
+    // Train and then issue a prefetch from the address
+    trainPrefetcher(accessAddress);
+    updateBestOffset();
+
+    issuePrefetch(accessAddress, addresses);
 
     // INFO Legacy code below
     // // access pc is the pc of the inst that requests the cache line
