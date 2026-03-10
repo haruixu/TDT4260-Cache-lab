@@ -120,7 +120,7 @@ class TDTPrefetcher : public Queued
     bool testAddressWithOffset(Addr address, int offset);
     unsigned int calculateHash(Addr address);
 
-    bool hasAddressBeenPrefetched(Addr address); // TODO: implement
+    bool hasPacketBeenPrefetched(PacketPtr pkt);
 
     void trainPrefetcher(Addr accessAddress);
     void updateBestOffset();

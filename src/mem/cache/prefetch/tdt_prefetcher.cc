@@ -3,6 +3,7 @@
 #include "base/types.hh"
 #include "debug/HWPrefetch.hh"
 #include "mem/cache/replacement_policies/base.hh"
+#include "mem/packet.hh"
 #include "params/TDTPrefetcher.hh"
 
 namespace gem5
@@ -56,9 +57,30 @@ TDTPrefetcher::PCTable &TDTPrefetcher::allocateNewContext(int context)
     return *(pcTables[context]);
 }
 
+bool TDTPrefetcher::hasPacketBeenPrefetched(PacketPtr pkt)
+{
+    return pkt->cmd == MemCmd::HardPFReq;
+};
+
 void TDTPrefetcher::notifyFill(const CacheAccessProbeArg &arg)
 {
     // A cache line has been filled in
+    PacketPtr pkt = arg.pkt;
+    Addr fill_addr = pkt->getAddr();
+
+    if (disablePrefetching) {
+        // Update the RR table with address
+        insertIntoRR(fill_addr);
+
+    } else if (hasPacketBeenPrefetched(pkt)) {
+        // Update the RR table with address-best_offset
+        Addr baseAddress = fill_addr - bestOffset * blkSize;
+        baseAddress = blockAddress(baseAddress);
+
+        if (samePage(baseAddress, fill_addr)) {
+            insertIntoRR(baseAddress);
+        }
+    }
 }
 
 bool TDTPrefetcher::testAddressWithOffset(Addr address, int offset)
@@ -77,8 +99,6 @@ unsigned int TDTPrefetcher::calculateHash(Addr address)
     unsigned int next = (address >> 8) & 0xFF;
     return lsb ^ next;
 };
-
-bool TDTPrefetcher::hasAddressBeenPrefetched(Addr address) { return true; };
 
 void TDTPrefetcher::trainPrefetcher(Addr accessAddress)
 {
@@ -168,20 +188,7 @@ void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi,
     Addr access_addr = pfi.getAddr();
     access_addr = blockAddress(access_addr);
 
-    if (pfi.isWrite() && disablePrefetching) {
-        // Update the RR table with address
-        insertIntoRR(access_addr);
-
-    } else if (pfi.isWrite() && hasAddressBeenPrefetched(access_addr)) {
-        // Update the RR table with address-best_offset
-        Addr baseAddress = access_addr - bestOffset * blkSize;
-        baseAddress = blockAddress(baseAddress);
-
-        if (samePage(baseAddress, access_addr)) {
-            insertIntoRR(baseAddress);
-        }
-
-    } else if (!pfi.isWrite()) { // if it is a cache access
+    if (!pfi.isWrite()) { // if it is a cache access
         // Train and then issue a prefetch from the address
         trainPrefetcher(access_addr);
         updateBestOffset();
@@ -219,8 +226,8 @@ void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi,
     // }
     //
     // // The following show you how to add an entry to PCTable for a PC
-    // // All slots are by default taken, you must replace a previous slot with
-    // new
+    // // All slots are by default taken, you must replace a previous slot
+    // with new
     // // data Find replacement victim for your new data, update information
     // TDTEntry *victim = pcTable.findVictim(key);
     // victim->lastAddr = access_addr;
