@@ -21,8 +21,9 @@ TDTPrefetcher::TDTEntry::TDTEntry(TagExtractor ext) : TaggedEntry()
 void TDTPrefetcher::TDTEntry::invalidate() { TaggedEntry::invalidate(); }
 
 TDTPrefetcher::TDTPrefetcher(const TDTPrefetcherParams &params)
-    : Queued(params), pcTableInfo(params.table_assoc, params.table_entries,
-                                  params.table_indexing_policy, params.table_replacement_policy)
+    : Queued(params),
+      pcTableInfo(params.table_assoc, params.table_entries,
+                  params.table_indexing_policy, params.table_replacement_policy)
 {
     scoreTable.fill(0);
     offsetIndex = 0;
@@ -45,10 +46,10 @@ TDTPrefetcher::PCTable &TDTPrefetcher::allocateNewContext(int context)
 {
     assert(context == 0);
     std::string table_name = name() + ".PCTable" + std::to_string(context);
-    pcTables[context].reset(new PCTable(table_name.c_str(), pcTableInfo.numEntries,
-                                        pcTableInfo.assoc, pcTableInfo.replacementPolicy,
-                                        pcTableInfo.indexingPolicy,
-                                        TDTEntry(genTagExtractor(pcTableInfo.indexingPolicy))));
+    pcTables[context].reset(new PCTable(
+        table_name.c_str(), pcTableInfo.numEntries, pcTableInfo.assoc,
+        pcTableInfo.replacementPolicy, pcTableInfo.indexingPolicy,
+        TDTEntry(genTagExtractor(pcTableInfo.indexingPolicy))));
 
     DPRINTF(HWPrefetch, "Adding context %i with tdt4260 entries\n", context);
 
@@ -62,29 +63,32 @@ void TDTPrefetcher::notifyFill(const CacheAccessProbeArg &arg)
 
 bool TDTPrefetcher::testAddressWithOffset(Addr address, int offset)
 {
-    Addr testAddress = address - offset;
+    Addr testAddress = address - offset * blkSize;
+    testAddress = blockAddress(testAddress);
     int tableIndex = calculateHash(testAddress);
 
     return RRTable[tableIndex] == testAddress;
 };
 
-int TDTPrefetcher::calculateHash(Addr address)
+unsigned int TDTPrefetcher::calculateHash(Addr address)
 {
     // XOR the 8 LSBs with the next 8 bits
-    int lsb = address & 0xFF;
-    int next = (address >> 8) & 0xFF;
+    unsigned int lsb = address & 0xFF;
+    unsigned int next = (address >> 8) & 0xFF;
     return lsb ^ next;
 };
+
+bool TDTPrefetcher::hasAddressBeenPrefetched(Addr address) { return true; };
 
 void TDTPrefetcher::trainPrefetcher(Addr accessAddress)
 {
     int testOffset = offsetArray[offsetIndex];
 
-    int newScore = 0;
     if (testAddressWithOffset(accessAddress, testOffset)) {
         // Hit in the RRTable, increase the offset's score
-        newScore = ++scoreTable[offsetIndex];
+        scoreTable[offsetIndex]++;
     }
+    int newScore = scoreTable[offsetIndex];
 
     // Update the current best offset candidate
     if (newScore > bestCandidateScore) {
@@ -124,19 +128,35 @@ void TDTPrefetcher::updateBestOffset()
 void TDTPrefetcher::resetTraining()
 {
     scoreTable.fill(0);
+    bestCandidate = 0;
     bestCandidateScore = 0;
+    offsetIndex = 0;
     roundCount = 0;
 };
 
-void TDTPrefetcher::issuePrefetch(Addr accessAddress, std::vector<AddrPriority> &addresses)
+void TDTPrefetcher::issuePrefetch(Addr accessAddress,
+                                  std::vector<AddrPriority> &addresses)
 {
-    Addr prefetchAddress = accessAddress + bestOffset; // NOTE: multiply by block size?
+    // if (disablePrefetching) {
+    //     return;
+    // }
+
+    Addr prefetchAddress =
+        accessAddress + bestOffset * blkSize; // NOTE: multiply by block size?
     if (samePage(accessAddress, prefetchAddress)) {
+        addresses.push_back(AddrPriority(accessAddress + blkSize, 0));
         addresses.push_back(AddrPriority(prefetchAddress, 0));
     }
 };
 
-void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi, std::vector<AddrPriority> &addresses,
+void TDTPrefetcher::insertIntoRR(Addr address)
+{
+    unsigned int tableIndex = calculateHash(address);
+    RRTable[tableIndex] = address;
+};
+
+void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi,
+                                      std::vector<AddrPriority> &addresses,
                                       const CacheAccessor &cache)
 {
     if (!pfi.hasPC()) {
@@ -146,10 +166,22 @@ void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi, std::vector<AddrP
 
     // access_addr is the memory address (of the cache line) requested
     Addr access_addr = pfi.getAddr();
+    access_addr = blockAddress(access_addr);
 
-    if (pfi.isWrite() && hasAddressBeenPrefetched(access_addr)) {
-        // Update the RR table
-    } else if (!pfi.isWrite()) {
+    if (pfi.isWrite() && disablePrefetching) {
+        // Update the RR table with address
+        insertIntoRR(access_addr);
+
+    } else if (pfi.isWrite() && hasAddressBeenPrefetched(access_addr)) {
+        // Update the RR table with address-best_offset
+        Addr baseAddress = access_addr - bestOffset * blkSize;
+        baseAddress = blockAddress(baseAddress);
+
+        if (samePage(baseAddress, access_addr)) {
+            insertIntoRR(baseAddress);
+        }
+
+    } else if (!pfi.isWrite()) { // if it is a cache access
         // Train and then issue a prefetch from the address
         trainPrefetcher(access_addr);
         updateBestOffset();
@@ -203,7 +235,10 @@ uint32_t TDTPrefetcherHashedSetAssociative::extractSet(const KeyType &key) const
     return (hash1 ^ hash2) & setMask;
 }
 
-Addr TDTPrefetcherHashedSetAssociative::extractTag(const Addr addr) const { return addr; }
+Addr TDTPrefetcherHashedSetAssociative::extractTag(const Addr addr) const
+{
+    return addr;
+}
 
 } // namespace prefetch
 } // namespace gem5

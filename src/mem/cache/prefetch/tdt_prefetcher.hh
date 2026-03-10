@@ -93,7 +93,7 @@ class TDTPrefetcher : public Queued
 
     // Offset array
 #define OFFSET_ARRAY_SIZE 52
-    constexpr static std::array<int, OFFSET_ARRAY_SIZE> offsetArray{
+    static constexpr std::array<int, OFFSET_ARRAY_SIZE> offsetArray{
         1,   2,   3,   4,   5,   6,   8,   9,   10,  12,  15,  16,  18,
         20,  24,  25,  27,  30,  32,  36,  40,  45,  48,  50,  54,  60,
         64,  72,  75,  80,  81,  90,  96,  100, 108, 120, 125, 128, 135,
@@ -104,7 +104,7 @@ class TDTPrefetcher : public Queued
 #define ROUNDMAX 100
 #define SCOREMAX 31
 #define BADSCORE 1
-    static std::array<int, OFFSET_ARRAY_SIZE> scoreTable;
+    std::array<int, OFFSET_ARRAY_SIZE> scoreTable;
     int roundCount; // Define max rounds, max score etc
     int bestCandidate;
     int bestCandidateScore;
@@ -115,10 +115,10 @@ class TDTPrefetcher : public Queued
 
     // Recent Requests table
 #define RR_TABLE_SIZE 256
-    static std::array<Addr, RR_TABLE_SIZE> RRTable;
+    std::array<Addr, RR_TABLE_SIZE> RRTable;
 
     bool testAddressWithOffset(Addr address, int offset);
-    int calculateHash(Addr address);
+    unsigned int calculateHash(Addr address);
 
     bool hasAddressBeenPrefetched(Addr address); // TODO: implement
 
@@ -126,9 +126,10 @@ class TDTPrefetcher : public Queued
     void updateBestOffset();
     void resetTraining();
 
-    void issuePrefetch(
-        Addr accessAddress,
-        std::vector<AddrPriority> &addresses);
+    void insertIntoRR(Addr address);
+
+    void issuePrefetch(Addr accessAddress,
+                       std::vector<AddrPriority> &addresses);
 
   public:
     TDTPrefetcher(const TDTPrefetcherParams &p);
