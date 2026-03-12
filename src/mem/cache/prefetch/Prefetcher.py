@@ -239,3 +239,18 @@ class TDTPrefetcher(QueuedPrefetcher):
     table_replacement_policy = Param.BaseReplacementPolicy(RandomRP(),
         "Replacement policy of the PC table")
 
+class NextLinePrefetcher(QueuedPrefetcher):
+    type = 'NextLinePrefetcher'
+    cxx_class = 'gem5::prefetch::NextLinePrefetcher'
+    cxx_header = "mem/cache/prefetch/next_line.hh"
+
+    table_assoc = Param.Int(4, "Assocaitivity of the PC table")
+    table_entries = Param.MemorySize("64", "Number of entries of the PC table")
+    table_indexing_policy = Param.TaggedIndexingPolicy(
+        TDTPrefetcherHashedSetAssociative(entry_size = 1,
+        assoc = Parent.table_assoc, size = Parent.table_entries),
+        "Indexing policy of the PC table")
+
+    table_replacement_policy = Param.BaseReplacementPolicy(RandomRP(),
+        "Replacement policy of the PC table")
+
