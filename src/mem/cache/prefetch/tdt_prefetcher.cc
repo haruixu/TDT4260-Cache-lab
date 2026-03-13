@@ -75,7 +75,6 @@ void TDTPrefetcher::notifyFill(const CacheAccessProbeArg &arg)
     } else if (hasPacketBeenPrefetched(pkt)) {
         // Update the RR table with address-best_offset
         Addr baseAddress = fillAddress - bestOffset * blkSize;
-        baseAddress = blockAddress(baseAddress);
 
         if (samePage(baseAddress, fillAddress)) {
             insertIntoRR(baseAddress);
@@ -89,7 +88,7 @@ bool TDTPrefetcher::testAddressWithOffset(Addr address, int offset)
     testAddress = blockAddress(testAddress);
     int tableIndex = calculateHash(testAddress);
 
-    return RRTable[tableIndex] == testAddress;
+    return blockAddress(RRTable[tableIndex]) == testAddress;
 };
 
 unsigned int TDTPrefetcher::calculateHash(Addr address)
@@ -165,6 +164,7 @@ void TDTPrefetcher::issuePrefetch(Addr accessAddress,
     Addr prefetchAddress = accessAddress + bestOffset * blkSize;
     if (samePage(accessAddress, prefetchAddress)) {
         // Only issue prefetches that lie in the same page
+        // prefetchAddress = blockAddress(prefetchAddress);
         addresses.push_back(AddrPriority(prefetchAddress, 0));
     }
 };
@@ -191,7 +191,7 @@ void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi,
 
     // accessAddress is the memory address (of the cache line) requested
     Addr accessAddress = pfi.getAddr();
-    accessAddress = blockAddress(accessAddress);
+    // accessAddress = blockAddress(accessAddress);
 
     // Train and then issue a prefetch from the address
     trainPrefetcher(accessAddress);
