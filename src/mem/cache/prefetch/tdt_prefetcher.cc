@@ -84,10 +84,10 @@ void TDTPrefetcher::notifyFill(const CacheAccessProbeArg &arg)
 bool TDTPrefetcher::testAddressWithOffset(Addr address, int offset)
 {
     Addr testAddress = address - offset * blkSize;
-    testAddress = blockAddress(testAddress);
-    int tableIndex = calculateHash(testAddress);
+    Addr testBlockAddress = blockAddress(testAddress);
+    int tableIndex = calculateHash(testBlockAddress);
 
-    return blockAddress(RRTable[tableIndex]) == testAddress;
+    return RRTable[tableIndex] == testBlockAddress;
 };
 
 unsigned int TDTPrefetcher::calculateHash(Addr address)
@@ -170,6 +170,7 @@ void TDTPrefetcher::issuePrefetch(Addr accessAddress,
 
 void TDTPrefetcher::insertIntoRR(Addr address)
 {
+    address = blockAddress(address);
     unsigned int tableIndex = calculateHash(address);
     RRTable[tableIndex] = address;
 };
