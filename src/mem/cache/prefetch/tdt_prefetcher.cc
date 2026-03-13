@@ -26,8 +26,7 @@ TDTPrefetcher::TDTPrefetcher(const TDTPrefetcherParams &params)
       pcTableInfo(params.table_assoc, params.table_entries,
                   params.table_indexing_policy, params.table_replacement_policy)
 {
-    scoreTable.fill(0);
-    offsetIndex = 0;
+    resetTraining();
     bestOffset = 0;
     disablePrefetching = true;
 
