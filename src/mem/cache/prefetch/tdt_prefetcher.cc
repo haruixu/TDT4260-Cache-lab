@@ -75,7 +75,7 @@ void TDTPrefetcher::notifyFill(const CacheAccessProbeArg &arg)
         // Update the RR table with address-best_offset
         Addr baseAddress = fillAddress - bestOffset * blkSize;
 
-        if (samePage(baseAddress, fillAddress)) {
+        if (!useVirtualAddresses || samePage(baseAddress, fillAddress)) {
             insertIntoRR(baseAddress);
         }
     }
@@ -161,7 +161,7 @@ void TDTPrefetcher::issuePrefetch(Addr accessAddress,
     }
 
     Addr prefetchAddress = accessAddress + bestOffset * blkSize;
-    if (samePage(accessAddress, prefetchAddress)) {
+    if (!useVirtualAddresses || samePage(accessAddress, prefetchAddress)) {
         // Only issue prefetches that lie in the same page
         // prefetchAddress = blockAddress(prefetchAddress);
         addresses.push_back(AddrPriority(prefetchAddress, 0));
