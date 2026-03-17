@@ -1,0 +1,26 @@
+Summary of benchmarking follows...
+-----IPC-----
+
+
+
+Detailed stats follow...
+gcc_s stats:
+
+
+
+exchange2_s stats:
+
+
+
+mcf_s stats:
+
+
+
+deepsjeng_s stats:
+
+
+
+x264_s stats:
+
+
+
