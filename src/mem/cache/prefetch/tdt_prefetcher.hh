@@ -101,11 +101,12 @@ class TDTPrefetcher : public Queued
     int offsetIndex;
 
     // Scoring system
+    // Define max rounds, max score etc
 #define ROUNDMAX 100
 #define SCOREMAX 31
 #define BADSCORE 1
     std::array<int, OFFSET_ARRAY_SIZE> scoreTable;
-    int roundCount; // Define max rounds, max score etc
+    int roundCount;
     int bestCandidate;
     int bestCandidateScore;
 

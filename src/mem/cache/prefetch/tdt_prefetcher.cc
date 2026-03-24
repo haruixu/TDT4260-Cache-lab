@@ -163,7 +163,6 @@ void TDTPrefetcher::issuePrefetch(Addr accessAddress,
     Addr prefetchAddress = accessAddress + bestOffset * blkSize;
     if (!useVirtualAddresses || samePage(accessAddress, prefetchAddress)) {
         // Only issue prefetches that lie in the same page
-        // prefetchAddress = blockAddress(prefetchAddress);
         addresses.push_back(AddrPriority(prefetchAddress, 0));
     }
 };
@@ -191,7 +190,6 @@ void TDTPrefetcher::calculatePrefetch(const PrefetchInfo &pfi,
 
     // accessAddress is the memory address (of the cache line) requested
     Addr accessAddress = pfi.getAddr();
-    // accessAddress = blockAddress(accessAddress);
 
     // Train and then issue a prefetch from the address
     trainPrefetcher(accessAddress);

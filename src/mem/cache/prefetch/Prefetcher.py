@@ -81,7 +81,9 @@ class BasePrefetcher(ClockedObject):
         "Notify the hardware prefetcher on hit on prefetched lines")
     use_virtual_addresses = Param.Bool(False,
         "Use virtual addresses for prefetching")
-    page_bytes = Param.MemorySize('4KiB',
+    # page_bytes = Param.MemorySize('4KiB',
+    #         "Size of pages for virtual addresses")
+    page_bytes = Param.MemorySize('4MiB',
             "Size of pages for virtual addresses")
 
     def __init__(self, **kwargs):
