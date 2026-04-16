@@ -41,3 +41,4 @@ typings
 *.pdf
 *.txt
 *.zip
+.clangd
